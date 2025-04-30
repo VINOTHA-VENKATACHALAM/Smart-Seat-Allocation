@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>AI-Based Exam Seating Arrangement</title>
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+        .room {
+            display: grid;
+            gap: 20px;
+            justify-items: center;
+            align-items: center;
+        }
+        .boy-seat { background: #e0437b !important; color: #fff !important; }
+        .girl-seat { background: #ffb300 !important; color: #fff !important; }
+        .disabled-seat { background: #ff0000 !important; color: #fff !important; }
+        .seat.empty { background: #eee; }
+        .table {
+            min-width: 90px;
+            min-height: 44px;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px #0001;
+            padding: 6px 10px;
+        }
+        .seat {
+            min-width: 36px;
+            min-height: 36px;
+            max-width: 40px;
+            max-height: 40px;
+            border-radius: 8px;
+            margin: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 15px;
+            box-shadow: 0 1px 4px #0002;
+        }
+        .student-name {
+            font-size: 13px;
+        }
+        .student-subject {
+            font-size: 11px;
+            font-weight: normal;
+            color: #222;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="logo-container">
+            <div class="logo">AI</div>
+            <div class="logo-text">ExamSeat AI</div>
+        </div>
+    </header>
+
+    <main class="main-container">
+        <section class="container">
+            <div class="config-panel">
+                <h3>Configuration</h3>
+
+                <div class="input-group">
+                    <label for="numClasses">Number of Classes:</label>
+                    <input type="number" id="numClasses" min="1" value="1" onchange="updateClassSettings()" />
+                </div>
+
+                <div class="input-group">
+                    <label for="totalStudents">Total Students:</label>
+                    <input type="number" id="totalStudents" min="1" value="40" />
+                </div>
+
+                <div class="input-group">
+                    <label for="studentsPerTable">Students per Table:</label>
+                    <input type="number" id="studentsPerTable" min="1" max="4" value="2" />
+                </div>
+
+                <section class="section-base class-settings-section">
+                    <h4>Class Settings</h4>
+                    <div id="classSettingsList">
+                        <div class="class-entry">
+                            <h5>Class 1</h5>
+                            <div class="class-grid">
+                                <div class="input-group">
+                                    <label>Tables per Row:</label>
+                                    <input type="number" class="tables-per-row" min="1" value="5" />
+                                </div>
+                                <div class="input-group">
+                                    <label>Number of Rows:</label>
+                                    <input type="number" class="num-rows" min="1" value="5" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="section-base student-details-section">
+                    <h4>Student Details</h4>
+
+                    <div class="input-group">
+                        <label for="excelFile">Upload Student Data (Excel):</label>
+                        <div class="excel-upload-container">
+                            <input type="file" id="excelFile" accept=".xlsx, .xls" class="excel-input" />
+                            <button type="button" class="upload-btn" onclick="processExcelFile()">Upload & Process</button>
+                        </div>
+                    </div>
+
+                    <div id="excelPreview" class="excel-preview section-base" style="display: none;">
+                        <h4>Preview of Uploaded Data</h4>
+                        <div class="preview-table-container">
+                            <table class="preview-table">
+                                <thead>
+                                    <tr>
+                                        <th>S.No</th>
+                                        <th>Roll No</th>
+                                        <th>Name</th>
+                                        <th>Gender</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="previewTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="preview-stats">
+                            <p>Total: <span id="totalStudentsCount">0</span></p>
+                            <p>Male: <span id="boysCount">0</span></p>
+                            <p>Female: <span id="girlsCount">0</span></p>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Roll Number Range:</label>
+                        <div class="range-inputs">
+                            <input type="text" id="rollStart" placeholder="Start Roll No" />
+                            <span>to</span>
+                            <input type="text" id="rollEnd" placeholder="End Roll No" />
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="studentPrompt">Student Prompt:</label>
+                        <textarea id="studentPrompt" rows="3" placeholder="Generate roll numbers from 1001 to 2000"></textarea>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="genderDistribution">Gender Distribution:</label>
+                        <select id="genderDistribution">
+                            <option value="random">Random</option>
+                            <option value="alternate">Alternate</option>
+                            <option value="all-boys">All Boys</option>
+                            <option value="all-girls">All Girls</option>
+                        </select>
+                    </div>
+
+                    <button type="button" id="generateStudentListBtn" class="add-dept-btn">Generate Student List</button>
+                </section>
+
+                <section class="section-base department-group">
+                    <h4>Subject Settings</h4>
+                    <div id="subjectList">
+                        <div class="subject-entry">
+                            <input type="text" placeholder="Subject Name" class="subject-name" />
+                            <input type="number" placeholder="Students" class="subject-students" min="0" value="0" />
+                            <button type="button" onclick="removeSubject(this)">×</button>
+                        </div>
+                    </div>
+                    <button type="button" class="add-dept-btn" onclick="addSubject()">Add Subject</button>
+                </section>
+
+                <section class="section-base accessibility-options">
+                    <h4>Accessibility Settings</h4>
+
+                    <div class="input-group">
+                        <label for="disabledStudents">Students with Disabilities:</label>
+                        <input type="number" id="disabledStudents" min="0" value="0" />
+                    </div>
+
+                    <div class="input-group">
+                        <label for="disabledExamType">Disabled Students Exam Type:</label>
+                        <select id="disabledExamType">
+                            <option value="same">Same Exam</option>
+                            <option value="different">Different Exam</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="prioritySeating">Priority Seating:</label>
+                        <select id="prioritySeating">
+                            <option value="front">Front Row</option>
+                            <option value="exit">Near Exits</option>
+                            <option value="both">Front Row & Near Exits</option>
+                        </select>
+                    </div>
+                </section>
+
+                <div class="input-group">
+                    <label for="teachersPerClass">Teachers per Class:</label>
+                    <input type="number" id="teachersPerClass" min="1" value="2" />
+                </div>
+
+                <div class="input-group">
+                    <label for="numCameras">Number of Cameras:</label>
+                    <input type="number" id="numCameras" min="0" value="4" />
+                </div>
+
+                <div class="input-group">
+                    <label for="seatingArrangement">Seating Arrangement:</label>
+                    <select id="seatingArrangement">
+                        <option value="mixed">Mixed Seating</option>
+                        <option value="segregated">Gender Segregated</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="distributionType">Student Distribution:</label>
+                    <select id="distributionType">
+                        <option value="compact">Compact (Fill from start)</option>
+                        <option value="distributed">Distributed (Spread evenly)</option>
+                    </select>
+                    <div class="input-hint">
+                        <p>Compact: Students are seated together starting from the first seat</p>
+                        <p>Distributed: Students are spread evenly across all available seats</p>
+                    </div>
+                </div>
+
+                <div class="legend">
+                    <div class="legend-item"><div class="legend-color" style="background: var(--secondary-color)"></div><span>Boy</span></div>
+                    <div class="legend-item"><div class="legend-color" style="background: var(--warning-color)"></div><span>Girl</span></div>
+                    <div class="legend-item"><div class="legend-color" style="border: 2px solid var(--primary-color)"></div><span>Same Exam</span></div>
+                    <div class="legend-item"><div class="legend-color" style="border: 2px solid var(--warning-color)"></div><span>Different Exam</span></div>
+                    <div class="legend-item"><div class="legend-color disabled"></div><span>Disabled Student</span></div>
+                    <div class="legend-item"><div class="legend-color" style="background: var(--accent-color)"></div><span>Large Desk</span></div>
+                </div>
+
+                <div id="subjectLegend" class="subject-legend">
+                    <h4>Subject Legend</h4>
+                </div>
+
+                <div class="buttons-container">
+                    <button type="button" onclick="generateSeating()">Generate Seating Plan</button>
+                    <button type="button" class="print-button" onclick="printSeatingPlan()">Print/Export PDF</button>
+                </div>
+            </div>
+
+            <div id="examHalls"></div>
+        </section>
+    </main>
+
+    <div class="popup-overlay">
+        <div class="popup-content">
+            <button class="popup-close">&times;</button>
+            <div class="error-popup">
+                <h4>Error</h4>
+                <p id="error-message"></p>
+                <button type="button" onclick="closeErrorPopup()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
+    <script src="script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // ... all your code ...
+
+            // Make all functions used in HTML global
+            window.updateClassSettings = updateClassSettings;
+            window.addSubject = addSubject;
+            window.removeSubject = removeSubject;
+            window.generateStudentList = generateStudentList;
+            window.processExcelFile = processExcelFile;
+            window.generateSeating = generateSeating;
+            window.printSeatingPlan = printSeatingPlan;
+            window.closeErrorPopup = closeErrorPopup;
+
+            // Add the removeSubject function to the global window
+            window.removeSubject = removeSubject;
+        });
+
+        function addSubject() {
+            console.log("addSubject called");
+            const subjectList = document.getElementById("subjectList");
+            const entry = document.createElement("div");
+            entry.classList.add("subject-entry");
+            entry.innerHTML = `
+                <input type="text" placeholder="Subject Name" class="subject-name" />
+                <input type="number" placeholder="Students" class="subject-students" min="0" value="0" />
+                <button type="button" onclick="removeSubject(this)">×</button>
+            `;
+            subjectList.appendChild(entry);
+        }
+        
+    </script>
+    <script>
+    function generateSeating() {
+        const numClasses = parseInt(document.getElementById('numClasses').value);
+        const totalStudents = parseInt(document.getElementById('totalStudents').value);
+        const studentsPerTable = parseInt(document.getElementById('studentsPerTable').value);
+        const disabledStudents = parseInt(document.getElementById('disabledStudents').value);
+        const prioritySeating = document.getElementById('prioritySeating').value;
+        const genderDist = document.getElementById('genderDistribution').value;
+
+        // Validation
+        if (disabledStudents > totalStudents) {
+            alert("Number of disabled students cannot exceed total students.");
+            document.getElementById('examHalls').innerHTML = '';
+            return;
+        }
+
+        if (
+            isNaN(numClasses) || numClasses < 1 ||
+            isNaN(totalStudents) || totalStudents < 1 ||
+            isNaN(studentsPerTable) || studentsPerTable < 1
+        ) {
+            alert("Please enter valid values for Number of Classes, Total Students, and Students per Table.");
+            document.getElementById('examHalls').innerHTML = '';
+            return;
+        }
+
+        // 1. Get subjects and student counts from user input
+        const subjectEntries = document.querySelectorAll('.subject-entry');
+        let subjects = [];
+        subjectEntries.forEach(entry => {
+            const name = entry.querySelector('.subject-name').value.trim();
+            const count = parseInt(entry.querySelector('.subject-students').value) || 0;
+            if (name && count > 0) {
+                subjects.push({ name, count });
+            }
+        });
+
+        // 2. Build the student list with subject assignment
+        let students = [];
+        let currentSubjectIndex = 0;
+        let subjectStudentCount = 0;
+        for (let i = 1; i <= totalStudents; i++) {
+            let gender = 'male';
+            if (genderDist === 'alternate') {
+                gender = (i % 2 === 0) ? 'female' : 'male';
+            } else if (genderDist === 'all-girls') {
+                gender = 'female';
+            } else if (genderDist === 'all-boys') {
+                gender = 'male';
+            } else {
+                gender = (Math.random() < 0.5) ? 'male' : 'female';
+            }
+            // Assign subject from user input
+            let subject = subjects.length > 0 ? subjects[currentSubjectIndex].name : 'Unassigned';
+            subjectStudentCount++;
+            if (subjects.length > 0 && subjectStudentCount >= subjects[currentSubjectIndex].count) {
+                currentSubjectIndex = (currentSubjectIndex + 1) % subjects.length;
+                subjectStudentCount = 0;
+            }
+            students.push({
+                rollNo: i,
+                gender: gender,
+                isDisabled: i <= disabledStudents,
+                subject: subject
+            });
+        }
+
+        // Priority seating: move disabled students to the front if requested
+        if (prioritySeating === 'front' || prioritySeating === 'both') {
+            const disabled = students.filter(s => s.isDisabled);
+            const others = students.filter(s => !s.isDisabled);
+            students = disabled.concat(others);
+        }
+
+        // 3. Distribute students to tables ensuring unique subjects per table
+        let studentPool = [...students];
+        let seatingPlan = '';
+        for (let i = 0; i < numClasses; i++) {
+            const entry = document.querySelectorAll('.class-entry')[i];
+            const tablesPerRow = parseInt(entry.querySelector('.tables-per-row').value);
+            const numRows = parseInt(entry.querySelector('.num-rows').value);
+            const totalTables = tablesPerRow * numRows;
+
+            seatingPlan += `<div class="class-section"><h4>Class ${i + 1}</h4>
+                            <div class="room" style="grid-template-columns: repeat(${tablesPerRow}, 1fr); display: grid; gap: 20px;">`;
+
+            for (let t = 0; t < totalTables; t++) {
+                seatingPlan += `<div class="table">`;
+                let tableSubjects = new Set();
+                let seatsFilled = 0;
+                let attempts = 0;
+                while (seatsFilled < studentsPerTable && attempts < studentPool.length * 2) {
+                    // Find a student with a subject not already at this table
+                    let foundIndex = studentPool.findIndex(s => !tableSubjects.has(s.subject));
+                    if (foundIndex !== -1) {
+                        const student = studentPool[foundIndex];
+                        let seatClass = '';
+                        let seatStyle = '';
+                        if (student.isDisabled) {
+                            seatClass = 'disabled-seat';
+                            seatStyle = 'background: #ff0000; color: #fff;';
+                        } else if (student.gender === 'male') {
+                            seatClass = 'boy-seat';
+                            seatStyle = 'background: #e0437b; color: #fff;';
+                        } else if (student.gender === 'female') {
+                            seatClass = 'girl-seat';
+                            seatStyle = 'background: #ffb300; color: #fff;';
+                        }
+                        seatingPlan += `<div class="seat ${seatClass}" style="${seatStyle}">${student.rollNo}</div>`;
+                        tableSubjects.add(student.subject);
+                        studentPool.splice(foundIndex, 1);
+                        seatsFilled++;
+                    } else {
+                        // No unique subject left, fill with empty
+                        seatingPlan += `<div class="seat empty"></div>`;
+                        seatsFilled++;
+                    }
+                    attempts++;
+                }
+                // Fill empty seats if needed
+                while (seatsFilled < studentsPerTable) {
+                    seatingPlan += `<div class="seat empty"></div>`;
+                    seatsFilled++;
+                }
+                seatingPlan += `</div>`;
+            }
+            seatingPlan += `</div></div>`;
+        }
+        document.getElementById('examHalls').innerHTML = seatingPlan;
+    }
+</script>
+<script>
+    function generateTables(settings, studentsPerTable) {
+        let tablesHTML = '';
+        const totalTables = settings.tablesPerRow * settings.numRows;
+
+        for (let row = 0; row < settings.numRows; row++) {
+            for (let col = 0; col < settings.tablesPerRow; col++) {
+                tablesHTML += `
+                    <div class="table" style="--seats-per-table: ${studentsPerTable}">
+                        ${generateSeats(studentsPerTable)}
+                    </div>
+                `;
+            }
+        }
+        return tablesHTML;
+    }
+
+    function generateSeats(maxSeats) {
+        let seatsHTML = '';
+        for (let i = 0; i < maxSeats; i++) {
+            seatsHTML += `<div class="seat empty" title="Empty Seat"></div>`;
+        }
+        return seatsHTML;
+    }
+</script>
+<script>
+function printSeatingPlan() {
+    // Hide config panel and show only the seating plan for printing
+    const configPanel = document.querySelector('.config-panel');
+    if (configPanel) configPanel.style.display = 'none';
+
+    window.print();
+
+    // Restore config panel after printing
+    if (configPanel) {
+        setTimeout(() => {
+            configPanel.style.display = '';
+        }, 500);
+    }
+}
+</script>
+
+</body>
+</html>
